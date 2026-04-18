@@ -1,0 +1,21 @@
+┌─────────────────────────────────────────────────────────────────────┐
+│                         React SPA (Frontend)                         │
+│  - Pages: Dashboard, PriceBook, Inventory, Fuel, Promo, Recon, etc. │
+│  - State: React Context + useReducer (or Zustand)                   │
+│  - API calls: axios to /api endpoints                               │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │ HTTP/REST
+┌───────────────────────────────▼─────────────────────────────────────┐
+│                     Express API Server (Backend)                     │
+│  - Routes: /api/auth, /api/items, /api/inventory, /api/fuel, ...    │
+│  - Middleware: auth, logging, error handling                         │
+│  - Services: PriceBookService, InventoryService, ReconciliationService│
+│  - POS Adapter Layer: Canonical ↔ File/API export/import             │
+│  - Event Emitter: for future module hooks (e.g., "sale.imported")   │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │ Prisma Client
+┌───────────────────────────────▼─────────────────────────────────────┐
+│                         PostgreSQL Database                          │
+│  - Tables: users, stores, items, inventory_transactions, fuel_*, ...│
+│  - Extension points: JSONB `metadata` columns, module-specific tables│
+└─────────────────────────────────────────────────────────────────────┘
