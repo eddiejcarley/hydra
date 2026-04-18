@@ -1,0 +1,63 @@
+{
+  "name": "hydra",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+"scripts": {
+  "dev:backend": "ts-node-dev --respawn --transpile-only src/backend/index.ts",
+  "dev:frontend": "vite",
+  "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+  "build": "tsc && vite build",
+  "start": "node dist/backend/index.js"
+},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eddiejcarley/hydra.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/eddiejcarley/hydra/issues"
+  },
+  "homepage": "https://github.com/eddiejcarley/hydra#readme",
+  "dependencies": {
+    "@prisma/client": "^7.7.0",
+    "@tanstack/react-query": "^5.99.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "axios": "^1.15.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-router-dom": "^7.14.1",
+    "vite": "^8.0.8"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.58.2",
+    "@typescript-eslint/parser": "^8.58.2",
+    "autoprefixer": "^10.5.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "postcss": "^8.5.10",
+    "prettier": "^3.8.3",
+    "prisma": "^7.7.0",
+    "tailwindcss": "^4.2.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^6.0.3"
+  }
+}
