@@ -1,6 +1,11 @@
 {
   "name": "Hydra",
-  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "dockerComposeFile": [
+    "docker-compose.yml"
+    // GPU users: add "docker-compose.gpu.yml" above to enable CUDA device passthrough
+  ],
+  "service": "app",
+  "workspaceFolder": "/workspaces/hydra",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
