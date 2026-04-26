@@ -1,0 +1,11 @@
+{
+  "identifier": "default",
+  "description": "Default capability for Hydra desktop app",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "http:default",
+    "store:default"
+  ]
+}

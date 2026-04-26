@@ -8,7 +8,10 @@
     "dev:frontend": "vite",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build": "tsc && vite build",
-    "start": "node dist/backend/index.js"
+    "start": "node dist/backend/index.js",
+    "tauri": "tauri",
+    "dev:app": "tauri dev",
+    "build:app": "tauri build"
   },
   "repository": {
     "type": "git",
@@ -37,7 +40,11 @@
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.1",
-    "vite": "^8.0.8"
+    "vite": "^8.0.8",
+    "@tauri-apps/api": "^2",
+    "recharts": "^2.13.0",
+    "@tauri-apps/plugin-http": "^2",
+    "@tauri-apps/plugin-store": "^2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -60,6 +67,8 @@
     "prisma": "^7.7.0",
     "tailwindcss": "^4.2.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "@tauri-apps/cli": "^2",
+    "@types/recharts": "^1.8.29"
   }
 }

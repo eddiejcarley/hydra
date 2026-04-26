@@ -7,7 +7,10 @@
   "service": "app",
   "workspaceFolder": "/workspaces/hydra",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "latest"
+    }
   },
   "customizations": {
     "vscode": {
@@ -28,6 +31,6 @@
       }
     }
   },
-  "postCreateCommand": "npm install && npx prisma generate",
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf && npm install && npx prisma generate",
   "forwardPorts": [3000, 5432]
 }
