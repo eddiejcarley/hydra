@@ -3,13 +3,13 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-"scripts": {
-  "dev:backend": "ts-node-dev --respawn --transpile-only src/backend/index.ts",
-  "dev:frontend": "vite",
-  "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-  "build": "tsc && vite build",
-  "start": "node dist/backend/index.js"
-},
+  "scripts": {
+    "dev:backend": "ts-node-dev --respawn --transpile-only src/backend/index.ts",
+    "dev:frontend": "vite",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build": "tsc && vite build",
+    "start": "node dist/backend/index.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/eddiejcarley/hydra.git"
@@ -40,8 +40,10 @@
     "vite": "^8.0.8"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",

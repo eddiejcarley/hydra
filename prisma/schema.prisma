@@ -1,10 +1,10 @@
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ---------- Core: Store & Users ----------
@@ -16,10 +16,21 @@ model Store {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users     User[]
-  items     Item[]
-  fuelTanks FuelTank[]
-  // future: multi-store support by adding storeId to all relevant tables
+  users                 User[]
+  items                 Item[]
+  departments           Department[]
+  vendors               Vendor[]
+  fuelTanks             FuelTank[]
+  fuelPumps             FuelPump[]
+  fuelDeliveries        FuelDelivery[]
+  fuelReadings          FuelTankReading[]
+  inventoryTransactions InventoryTransaction[]
+  purchaseOrders        PurchaseOrder[]
+  promotions            Promotion[]
+  posImportBatches      PosImportBatch[]
+  posTransactions       PosTransaction[]
+  dailyCloses           DailyClose[]
+  spotCountSessions     SpotCountSession[]
 }
 
 enum Role {
@@ -44,11 +55,13 @@ model Department {
   id        String   @id @default(cuid())
   storeId   String
   store     Store    @relation(fields: [storeId], references: [id])
-  name      String   @unique // e.g., Grocery, Beer/Wine, Tobacco, Fuel
+  name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   items Item[]
+
+  @@unique([storeId, name])
 }
 
 model Vendor {
@@ -62,151 +75,153 @@ model Vendor {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  items            Item[]
-  purchaseOrders   PurchaseOrder[]
-  inventoryReceipts InventoryTransaction[]
+  items                   Item[]
+  purchaseOrders          PurchaseOrder[]
+  inventoryReceipts       InventoryTransaction[] @relation("VendorReceipts")
+  preferredForInventories Inventory[]            @relation("PreferredVendor")
 }
 
 model Item {
-  id             String   @id @default(cuid())
-  storeId        String
-  store          Store    @relation(fields: [storeId], references: [id])
-  barcode        String   @unique
-  description    String
-  departmentId   String
-  department     Department @relation(fields: [departmentId], references: [id])
-  subCategory    String?
-  vendorId       String?
-  vendor         Vendor?   @relation(fields: [vendorId], references: [id])
-  unitOfMeasure  String    @default("EA")
-  packSize       Int?      // e.g., 24 for case
-  cost           Decimal   @db.Decimal(10,2)
-  retailPrice    Decimal   @db.Decimal(10,2)
-  taxable        Boolean   @default(true)
-  foodStampEligible Boolean @default(false)
-  fuelItem       Boolean   @default(false) // flag for fuel grade items
-  status         String    @default("ACTIVE") // ACTIVE, INACTIVE
-  metadata       Json?     // extension: e.g., { tobacco: { manufacturer: "Altria" } }
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                String     @id @default(cuid())
+  storeId           String
+  store             Store      @relation(fields: [storeId], references: [id])
+  barcode           String     @unique
+  description       String
+  departmentId      String
+  department        Department @relation(fields: [departmentId], references: [id])
+  subCategory       String?
+  vendorId          String?
+  vendor            Vendor?    @relation(fields: [vendorId], references: [id])
+  unitOfMeasure     String     @default("EA")
+  packSize          Int?
+  cost              Decimal    @db.Decimal(10, 2)
+  retailPrice       Decimal    @db.Decimal(10, 2)
+  taxable           Boolean    @default(true)
+  foodStampEligible Boolean    @default(false)
+  fuelItem          Boolean    @default(false)
+  status            String     @default("ACTIVE")
+  metadata          Json?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
-  // audit for price/department changes
-  priceHistory   PriceHistory[]
-
-  inventory      Inventory?
-  promotionItems PromotionItem[]
+  priceHistory          PriceHistory[]
+  inventory             Inventory?
+  promotionItems        PromotionItem[]
+  fuelTanks             FuelTank[]
+  inventoryTransactions InventoryTransaction[]
+  spotCountLines        SpotCountLine[]
+  posTransactions       PosTransaction[]
 }
 
 model PriceHistory {
   id        String   @id @default(cuid())
   itemId    String
   item      Item     @relation(fields: [itemId], references: [id])
-  field     String   // "cost", "retailPrice", "departmentId"
+  field     String
   oldValue  String?
   newValue  String?
-  changedBy String   // userId
+  changedBy String
   changedAt DateTime @default(now())
 }
 
 // ---------- Inventory ----------
 model Inventory {
-  id          String   @id @default(cuid())
-  itemId      String   @unique
-  item        Item     @relation(fields: [itemId], references: [id])
-  onHandQty   Decimal  @db.Decimal(10,2)
-  reorderPoint Decimal @db.Decimal(10,2) @default(0)
+  id                String   @id @default(cuid())
+  itemId            String   @unique
+  item              Item     @relation(fields: [itemId], references: [id])
+  onHandQty         Decimal  @db.Decimal(10, 2)
+  reorderPoint      Decimal  @db.Decimal(10, 2) @default(0)
   preferredVendorId String?
-  preferredVendor   Vendor? @relation(fields: [preferredVendorId], references: [id])
-  updatedAt   DateTime @updatedAt
+  preferredVendor   Vendor?  @relation("PreferredVendor", fields: [preferredVendorId], references: [id])
+  updatedAt         DateTime @updatedAt
 }
 
 model InventoryTransaction {
-  id             String   @id @default(cuid())
-  storeId        String
-  store          Store    @relation(fields: [storeId], references: [id])
-  itemId         String
-  item           Item     @relation(fields: [itemId], references: [id])
-  transactionType String   // RECEIPT, ADJUSTMENT, SALE (imported), SPOT_COUNT_VARIANCE
-  quantity       Decimal  @db.Decimal(10,2) // positive for additions, negative for deductions
-  unitCost       Decimal? @db.Decimal(10,2)
-  referenceNo    String?  // invoice or PO number
-  reasonCode     String?  // DAMAGE, SPOILAGE, THEFT, AUDIT_CORRECTION
-  vendorId       String?
-  vendor         Vendor?  @relation(fields: [vendorId], references: [id])
-  userId         String   // who performed transaction
-  createdAt      DateTime @default(now())
+  id              String   @id @default(cuid())
+  storeId         String
+  store           Store    @relation(fields: [storeId], references: [id])
+  itemId          String
+  item            Item     @relation(fields: [itemId], references: [id])
+  transactionType String
+  quantity        Decimal  @db.Decimal(10, 2)
+  unitCost        Decimal? @db.Decimal(10, 2)
+  referenceNo     String?
+  reasonCode      String?
+  vendorId        String?
+  vendor          Vendor?  @relation("VendorReceipts", fields: [vendorId], references: [id])
+  userId          String
+  createdAt       DateTime @default(now())
 }
 
-// Simple Purchase Orders (export only)
 model PurchaseOrder {
-  id          String   @id @default(cuid())
-  storeId     String
-  store       Store    @relation(fields: [storeId], references: [id])
-  vendorId    String
-  vendor      Vendor   @relation(fields: [vendorId], references: [id])
-  orderDate   DateTime @default(now())
-  status      String   @default("DRAFT") // DRAFT, SENT, RECEIVED
-  items       Json     // snapshot of items and quantities at order time
-  exportedPath String? // file path if exported
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id])
+  vendorId     String
+  vendor       Vendor   @relation(fields: [vendorId], references: [id])
+  orderDate    DateTime @default(now())
+  status       String   @default("DRAFT")
+  items        Json
+  exportedPath String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // ---------- Fuel (Wet Stock) ----------
 model FuelTank {
-  id          String   @id @default(cuid())
-  storeId     String
-  store       Store    @relation(fields: [storeId], references: [id])
-  tankNumber  Int
-  productGrade String   // e.g., "Regular 87", "Premium 93", "Diesel"
-  capacity    Decimal  @db.Decimal(10,2)
-  currentVolume Decimal @db.Decimal(10,2) @default(0)
-  itemId      String?  // link to fuel item in price book
-  item        Item?    @relation(fields: [itemId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id])
+  tankNumber    Int
+  productGrade  String
+  capacity      Decimal  @db.Decimal(10, 2)
+  currentVolume Decimal  @db.Decimal(10, 2) @default(0)
+  itemId        String?
+  item          Item?    @relation(fields: [itemId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  pumps       FuelPump[]
-  deliveries  FuelDelivery[]
-  readings    FuelTankReading[]
+  pumps      FuelPump[]
+  deliveries FuelDelivery[]
+  readings   FuelTankReading[]
 }
 
 model FuelPump {
-  id         String   @id @default(cuid())
-  storeId    String
-  store      Store    @relation(fields: [storeId], references: [id])
-  pumpNumber Int
-  tankId     String
-  tank       FuelTank @relation(fields: [tankId], references: [id])
-  meterReading Decimal @db.Decimal(10,2) @default(0)
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(cuid())
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id])
+  pumpNumber   Int
+  tankId       String
+  tank         FuelTank @relation(fields: [tankId], references: [id])
+  meterReading Decimal  @db.Decimal(10, 2) @default(0)
+  updatedAt    DateTime @updatedAt
 }
 
 model FuelDelivery {
+  id            String   @id @default(cuid())
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id])
+  tankId        String
+  tank          FuelTank @relation(fields: [tankId], references: [id])
+  deliveryDate  DateTime
+  supplier      String
+  bolNumber     String?
+  gallons       Decimal  @db.Decimal(10, 2)
+  costPerGallon Decimal? @db.Decimal(10, 2)
+  userId        String
+  createdAt     DateTime @default(now())
+}
+
+model FuelTankReading {
   id           String   @id @default(cuid())
   storeId      String
   store        Store    @relation(fields: [storeId], references: [id])
   tankId       String
   tank         FuelTank @relation(fields: [tankId], references: [id])
-  deliveryDate DateTime
-  supplier     String
-  bolNumber    String?  // Bill of Lading
-  gallons      Decimal  @db.Decimal(10,2)
-  costPerGallon Decimal? @db.Decimal(10,2)
+  readingDate  DateTime @default(now())
+  gaugeReading Decimal  @db.Decimal(10, 2)
+  temperature  Decimal? @db.Decimal(5, 2)
   userId       String
-  createdAt    DateTime @default(now())
-}
-
-model FuelTankReading {
-  id          String   @id @default(cuid())
-  storeId     String
-  store       Store    @relation(fields: [storeId], references: [id])
-  tankId      String
-  tank        FuelTank @relation(fields: [tankId], references: [id])
-  readingDate DateTime @default(now())
-  gaugeReading Decimal  @db.Decimal(10,2)
-  temperature Decimal?  @db.Decimal(5,2)
-  userId      String
 }
 
 // ---------- Promotions ----------
@@ -217,31 +232,31 @@ enum PromotionType {
 }
 
 model Promotion {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   storeId     String
-  store       Store    @relation(fields: [storeId], references: [id])
+  store       Store         @relation(fields: [storeId], references: [id])
   name        String
   description String?
   type        PromotionType
-  value       Decimal  @db.Decimal(10,2) // e.g., 4.00 for "2 for $4", or 10.00 for 10% off
+  value       Decimal       @db.Decimal(10, 2)
   startDate   DateTime
   endDate     DateTime
-  timeStart   String?  // HH:MM format for dayparting
+  timeStart   String?
   timeEnd     String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
-  items       PromotionItem[]
+  items PromotionItem[]
 }
 
 model PromotionItem {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   promotionId String
   promotion   Promotion @relation(fields: [promotionId], references: [id])
   itemId      String
-  item        Item     @relation(fields: [itemId], references: [id])
-  quantity    Int?      // for mix-and-match: required quantity per eligible item
+  item        Item      @relation(fields: [itemId], references: [id])
+  quantity    Int?
 }
 
 // ---------- POS Integration ----------
@@ -250,84 +265,82 @@ model PosImportBatch {
   storeId     String
   store       Store    @relation(fields: [storeId], references: [id])
   fileName    String?
-  status      String   // PROCESSING, COMPLETED, FAILED
+  status      String
   totalRows   Int
   processedAt DateTime @default(now())
   errorLog    Json?
+
+  transactions PosTransaction[]
 }
 
 model PosTransaction {
-  id              String   @id @default(cuid())
+  id              String          @id @default(cuid())
   storeId         String
-  store           Store    @relation(fields: [storeId], references: [id])
+  store           Store           @relation(fields: [storeId], references: [id])
   batchId         String?
   batch           PosImportBatch? @relation(fields: [batchId], references: [id])
   transactionDate DateTime
-  itemCode        String   // barcode or POS SKU
-  itemId          String?  // resolved to internal item ID
+  itemCode        String
+  itemId          String?
+  item            Item?           @relation(fields: [itemId], references: [id])
   description     String?
-  quantity        Decimal  @db.Decimal(10,2)
-  grossSale       Decimal  @db.Decimal(10,2)
-  discount        Decimal  @db.Decimal(10,2) @default(0)
-  netSale         Decimal  @db.Decimal(10,2)
-  tax             Decimal  @db.Decimal(10,2) @default(0)
-  department      String?  // as reported by POS
-  tenderType      String   // CASH, CREDIT, DEBIT, EBT, etc.
-  isVoid          Boolean  @default(false)
-  isReturn        Boolean  @default(false)
+  quantity        Decimal         @db.Decimal(10, 2)
+  grossSale       Decimal         @db.Decimal(10, 2)
+  discount        Decimal         @db.Decimal(10, 2) @default(0)
+  netSale         Decimal         @db.Decimal(10, 2)
+  tax             Decimal         @db.Decimal(10, 2) @default(0)
+  department      String?
+  tenderType      String
+  isVoid          Boolean         @default(false)
+  isReturn        Boolean         @default(false)
 }
 
 // ---------- Daily Reconciliation ----------
 model DailyClose {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   storeId         String
-  store           Store    @relation(fields: [storeId], references: [id])
-  closeDate       DateTime @unique
-  // Sales summary (snapshot from POS)
-  totalSales      Decimal  @db.Decimal(10,2)
-  totalTax        Decimal  @db.Decimal(10,2)
-  // Tender breakdown
-  cashSales       Decimal  @db.Decimal(10,2)
-  creditSales     Decimal  @db.Decimal(10,2)
-  debitSales      Decimal  @db.Decimal(10,2)
-  ebtSales        Decimal  @db.Decimal(10,2)
-  otherTenders    Decimal  @db.Decimal(10,2)
-  // Counted
-  countedCash     Decimal? @db.Decimal(10,2)
-  bankDeposit     Decimal? @db.Decimal(10,2)
-  cashVariance    Decimal? @db.Decimal(10,2)
+  store           Store     @relation(fields: [storeId], references: [id])
+  closeDate       DateTime  @unique
+  totalSales      Decimal   @db.Decimal(10, 2)
+  totalTax        Decimal   @db.Decimal(10, 2)
+  cashSales       Decimal   @db.Decimal(10, 2)
+  creditSales     Decimal   @db.Decimal(10, 2)
+  debitSales      Decimal   @db.Decimal(10, 2)
+  ebtSales        Decimal   @db.Decimal(10, 2)
+  otherTenders    Decimal   @db.Decimal(10, 2)
+  countedCash     Decimal?  @db.Decimal(10, 2)
+  bankDeposit     Decimal?  @db.Decimal(10, 2)
+  cashVariance    Decimal?  @db.Decimal(10, 2)
   varianceReason  String?
-  // Inventory shrink (from spot counts)
-  inventoryShrink Decimal? @db.Decimal(10,2)
-  // Fuel variance summary
-  fuelVariance    Decimal? @db.Decimal(10,2)
-  // Status
-  status          String   @default("OPEN") // OPEN, RECONCILED, FINALIZED
-  reconciledBy    String?  // userId
+  inventoryShrink Decimal?  @db.Decimal(10, 2)
+  fuelVariance    Decimal?  @db.Decimal(10, 2)
+  status          String    @default("OPEN")
+  reconciledBy    String?
   reconciledAt    DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
-// Spot Count Sessions
 model SpotCountSession {
-  id          String   @id @default(cuid())
-  storeId     String
-  store       Store    @relation(fields: [storeId], references: [id])
-  countedAt   DateTime @default(now())
+  id           String   @id @default(cuid())
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id])
+  countedAt    DateTime @default(now())
   departmentId String?
-  notes       String?
-  countedBy   String   // userId
-  status      String   @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED
+  notes        String?
+  countedBy    String
+  status       String   @default("IN_PROGRESS")
+
+  lines SpotCountLine[]
 }
 
 model SpotCountLine {
-  id          String   @id @default(cuid())
-  sessionId   String
-  session     SpotCountSession @relation(fields: [sessionId], references: [id])
-  itemId      String
-  item        Item     @relation(fields: [itemId], references: [id])
-  systemQty   Decimal  @db.Decimal(10,2) // snapshot at time of count
-  countedQty  Decimal  @db.Decimal(10,2)
-  variance    Decimal? @db.Decimal(10,2) // calculated after count
+  id         String           @id @default(cuid())
+  sessionId  String
+  session    SpotCountSession @relation(fields: [sessionId], references: [id])
+  itemId     String
+  item       Item             @relation(fields: [itemId], references: [id])
+  systemQty  Decimal          @db.Decimal(10, 2)
+  countedQty Decimal          @db.Decimal(10, 2)
+  variance   Decimal?         @db.Decimal(10, 2)
 }
